@@ -1,7 +1,9 @@
 #include <msp430.h> 
-#include "vector.h"
+//#include "vector.h"
+#include "Common/List.h"
 
-Vector vector;
+List bluetoothDataRaw;
+List bluetoothDataParsed;
 
 int main(void) {
 	WDTCTL = WDTPW + WDTHOLD;                 // Stop WDT
@@ -20,11 +22,23 @@ int main(void) {
     UCA0MCTL = UCBRS0;                        // Modulation UCBRSx = 1
     UCA0CTL1 &= ~UCSWRST;                     // **Initialize USCI state machine**
     IE2 |= UCA0RXIE;                          // Enable USCI_A0 RX interrupt
-	
-    init(&vector);
 
     __enable_interrupt();
 
+/*
+    int i;
+    int counter = 0;
+    while(true){
+    	bluetoothDataRaw.init();
+    	for (i = 0; i < 10; ++i) {
+    		bluetoothDataRaw.append(i);
+		}
+
+    	bluetoothDataRaw.clear();
+    	i=0;
+    	counter++;
+    }
+*/
 	return 0;
 }
 
@@ -43,19 +57,29 @@ __interrupt void USCI0RX_ISR(void)
   // count start and stop bits
   if(result == 0xFF){
 	  conditionBitCounter++;
+
+	  // Stop bits received => reset counter + parse bt-data + enable other interrupts
+	  if(conditionBitCounter == 4)
+	  {
+	    conditionBitCounter = 0;
+
+	    int i;
+	    for (i = 0; i < bluetoothDataRaw.getSize(); i++) {
+
+		}
+
+	    bluetoothDataRaw.clear();
+	  }
+
 	  return;
   }
 
   // Start bits received => collect data
   if(conditionBitCounter == 2 ){
-	  append(&vector, result);
+	  bluetoothDataRaw.append(result);
   }
 
-  // Stop bits received => reset counter + enebale other interrupts
-  if(conditionBitCounter == 4)
-  {
-	  conditionBitCounter = 0;
-  }
+
 
 
 }

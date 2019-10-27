@@ -8,6 +8,7 @@ CG_TOOL_ROOT := D:/Program/ti/ccsv5/tools/compiler/msp430_4.2.1
 
 ORDERED_OBJS += \
 $(GEN_CMDS__FLAG) \
+"./Common/List.obj" \
 "./vector.obj" \
 "./main.obj" \
 "../lnk_msp430g2553.cmd" \
@@ -21,7 +22,9 @@ RMDIR := RMDIR /S/Q
 # All of the sources participating in the build are defined here
 -include sources.mk
 -include subdir_vars.mk
+-include Common/subdir_vars.mk
 -include subdir_rules.mk
+-include Common/subdir_rules.mk
 -include objects.mk
 
 ifneq ($(MAKECMDGOALS),clean)
@@ -116,15 +119,16 @@ all: CocktailMachine_MSP430.out
 CocktailMachine_MSP430.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: MSP430 Linker'
-	"D:/Program/ti/ccsv5/tools/compiler/msp430_4.2.1/bin/cl430" -vmsp --abi=eabi --advice:power=all -g --define=__MSP430G2553__ --diag_warning=225 --display_error_number --diag_wrap=off --printf_support=minimal -z -m"CocktailMachine_MSP430.map" --heap_size=80 --stack_size=80 -i"D:/Program/ti/ccsv5/ccs_base/msp430/include" -i"D:/Program/ti/ccsv5/tools/compiler/msp430_4.2.1/lib" -i"D:/Program/ti/ccsv5/tools/compiler/msp430_4.2.1/include" --reread_libs --warn_sections --display_error_number --diag_wrap=off --xml_link_info="CocktailMachine_MSP430_linkInfo.xml" --rom_model -o "CocktailMachine_MSP430.out" $(ORDERED_OBJS)
+	"D:/Program/ti/ccsv5/tools/compiler/msp430_4.2.1/bin/cl430" -vmsp --abi=eabi -Ooff --advice:power=all -g --define=__MSP430G2553__ --diag_warning=225 --display_error_number --diag_wrap=off --printf_support=minimal -z -m"CocktailMachine_MSP430.map" --heap_size=80 --stack_size=80 -i"D:/Program/ti/ccsv5/ccs_base/msp430/include" -i"D:/Program/ti/ccsv5/tools/compiler/msp430_4.2.1/lib" -i"D:/Program/ti/ccsv5/tools/compiler/msp430_4.2.1/include" --reread_libs --warn_sections --display_error_number --diag_wrap=off --xml_link_info="CocktailMachine_MSP430_linkInfo.xml" --rom_model -o "CocktailMachine_MSP430.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
 	-$(RM) $(MSP430_EXECUTABLE_OUTPUTS__QUOTED) "CocktailMachine_MSP430.out"
-	-$(RM) "main.pp" "vector.pp" 
-	-$(RM) "main.obj" "vector.obj" 
+	-$(RM) "main.pp" "Common\List.pp" 
+	-$(RM) "vector.pp" 
+	-$(RM) "main.obj" "vector.obj" "Common\List.obj" 
 	-@echo 'Finished clean'
 	-@echo ' '
 

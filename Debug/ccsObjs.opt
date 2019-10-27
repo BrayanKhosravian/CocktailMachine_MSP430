@@ -1,1 +1,1 @@
-"./vector.obj" "./main.obj" "../lnk_msp430g2553.cmd" -l"libc.a" 
+"./Common/List.obj" "./vector.obj" "./main.obj" "../lnk_msp430g2553.cmd" -l"libc.a" 
