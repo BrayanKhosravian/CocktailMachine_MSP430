@@ -8,8 +8,6 @@ CG_TOOL_ROOT := D:/Program/ti/ccsv5/tools/compiler/msp430_4.2.1
 
 ORDERED_OBJS += \
 $(GEN_CMDS__FLAG) \
-"./Common/List.obj" \
-"./vector.obj" \
 "./main.obj" \
 "../lnk_msp430g2553.cmd" \
 -l"libc.a" \
@@ -22,9 +20,7 @@ RMDIR := RMDIR /S/Q
 # All of the sources participating in the build are defined here
 -include sources.mk
 -include subdir_vars.mk
--include Common/subdir_vars.mk
 -include subdir_rules.mk
--include Common/subdir_rules.mk
 -include objects.mk
 
 ifneq ($(MAKECMDGOALS),clean)
@@ -126,9 +122,8 @@ CocktailMachine_MSP430.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 # Other Targets
 clean:
 	-$(RM) $(MSP430_EXECUTABLE_OUTPUTS__QUOTED) "CocktailMachine_MSP430.out"
-	-$(RM) "main.pp" "Common\List.pp" 
-	-$(RM) "vector.pp" 
-	-$(RM) "main.obj" "vector.obj" "Common\List.obj" 
+	-$(RM) "main.pp" 
+	-$(RM) "main.obj" 
 	-@echo 'Finished clean'
 	-@echo ' '
 

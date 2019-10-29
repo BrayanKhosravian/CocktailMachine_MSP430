@@ -9,33 +9,19 @@ CPP_SRCS += \
 CMD_SRCS += \
 ../lnk_msp430g2553.cmd 
 
-C_SRCS += \
-../vector.c 
-
 OBJS += \
-./main.obj \
-./vector.obj 
+./main.obj 
 
 CPP_DEPS += \
 ./main.pp 
 
-C_DEPS += \
-./vector.pp 
-
 CPP_DEPS__QUOTED += \
 "main.pp" 
 
-C_DEPS__QUOTED += \
-"vector.pp" 
-
 OBJS__QUOTED += \
-"main.obj" \
-"vector.obj" 
+"main.obj" 
 
 CPP_SRCS__QUOTED += \
 "../main.cpp" 
-
-C_SRCS__QUOTED += \
-"../vector.c" 
 
 
