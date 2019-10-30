@@ -111,6 +111,9 @@ bool isRawBtDataValid(){
 	if(_btRawData[0] != 0xFF && _btRawData[1] != 0xFF)
 		return false;
 
+	if(_btRawData[22] != 0x00) // last byte is only a dummy and it has to have alawys a value of "0x00"
+		return false;
+
 	int i;
 	for (i = 0; i <= sizeof(_btRawData)/sizeof(int); i++) {
 		if(_btRawData[i] == 0xFF) stopBytesCounter++;
