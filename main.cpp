@@ -9,17 +9,41 @@
 #include <msp430f2274.h>
 #endif
 
+
+#define position0 BIT0 // grundpos
+#define position1 BIT1 // Port1
+#define position2 BIT2
+#define position3 BIT3
+#define position4 BIT4
+#define position5 BIT5
+#define position6 BIT6
+
+#define engineForward BIT0 //engine goes away from position0 // PORT4
+#define engineBackward BIT1 //engine goes to position0		 // PORT 4
+
+enum class EngineDirection{Stop, Forward, Backward};
+
+// TODO: engine
+void enginePowerOn(bool state);
+void engineControl(EngineDirection engineDirection);
+void engineDriveToStart();						// <= use functions "enginePowerOn" "engineDirection" inside here
+void engineDriveToBottle(int position);			// <= use functions "enginePowerOn" "engineDirection" inside here
+
+int getPortBottlePosition();
+
+// setup
+void setup();
+
+
+// bluetooth
 bool isRawBtDataValid();
 void parseBtData();
 void clearBtState();
 
-typedef enum {start = 0, end = 1} _engineDirection;
 
-// TODO: engine
-void enginePowerOn(bool state);
-void engineDirection(_engineDirection engineDirection);
-void engineDriveToStart();						// <= use functions "enginePowerOn" "engineDirection" inside here
-void engineDriveToBottle(int position);			// <= use functions "enginePowerOn" "engineDirection" inside here
+void Tets(){
+
+}
 
 
 // TODO: scale
@@ -28,8 +52,53 @@ void scaleTurnOn(bool state);
 
 static volatile bool _btDataReceived = false;
 static volatile int _btParsedData[12];
+static volatile bool _engineFinished;
+
+static volatile int _routine = 0;
+static volatile int _bottlePosition = 0;
+
+// example
+// static int test[5] = {4,500,6,250,2,233};
 
 int main(void) {
+    setup();
+
+    while(true){
+    	// data received
+		if(_btDataReceived){
+			for (_routine = 0; _routine <= sizeof(_btParsedData)/sizeof(int); ) {
+				// IMMER getränk position
+				if(_routine % 2 == 0){
+				   _bottlePosition = _btParsedData[_routine];
+				   engineControl(EngineDirection::Forward);
+				}
+				// IMMER milliliter
+				else if(_routine % 2 == 1){
+
+				}
+
+			}
+
+
+
+    		// 1.) disable bluetooth rx interrupt
+    		// 2.) iterate over "_btParsedData"
+    		//		=> every 1st index is drink position
+    		//		=> every 2nd index is milliliter
+    		// 3.) drive to first drink and disable engine
+    		// 4.) enable scale interrupt
+    		// 5.) add liquid to bottle and measure the liquid with the scale
+    		// 6.) disable scale interrupt
+    		// 7.) continue the iteration => drive to second bottle => add liquid => measure => continue till end
+    		// 8.) at the end => enable bluetooth interrupt + call "clearBtState" and reset all states
+    	}
+    }
+
+}
+
+
+void setup(){
+
 	WDTCTL = WDTPW + WDTHOLD;                 // Stop WDT
 	if (CALBC1_1MHZ==0xFF)					// If calibration constant erased
 	{
@@ -47,24 +116,26 @@ int main(void) {
     UCA0CTL1 &= ~UCSWRST;                     // **Initialize USCI state machine**
     IE2 |= UCA0RXIE;                          // Enable USCI_A0 RX interrupt
 
+
+    //p2.6 input oscillator, p2.7 oscillator out
+
+    // TDOD: check if port interrupt for bottle positon is configuret correctly
+    P1DIR &= 0x00; // set Port 1 in Input direction
+    P1IE |= 0x7E; // P1.1-P1.7 Interrupt enable
+    P1IFG |= 0x7E; // declares Port 1 Input (except P1.0) as Interrupt Flags
+    P1IES |= 0x00; // P1.1-P1.6 low to high Edge
+
+    P2DIR &= 0x03; //set P2.0-P2.1 in Input direction
+    P2IE  |= 0x03; // P2.0-P2.1 Interrupt enable
+    P2IFG |= 0x03; //declares P2.0-P2.1 as Interrupt Flags
+    P2IES |= 0x00; //P2.0-P2.1 low to high Edge
+
+#if MSP430F2274
+
+
+#endif
+
     __enable_interrupt();
-
-    while(true){
-    	// data received
-    	if(_btDataReceived){
-    		// 1.) disable bluetooth rx interrupt
-    		// 2.) iterate over "_btParsedData"
-    		//		=> every 1st index is drink position
-    		//		=> every 2nd index is milliliter
-    		// 3.) drive to first drink and disable engine
-    		// 4.) enable scale interrupt
-    		// 5.) add liquid to bottle and measure the liquid with the scale
-    		// 6.) disable scale interrupt
-    		// 7.) continue the iteration => drive to second bottle => add liquid => measure => continue till end
-    		// 8.) at the end => enable bluetooth interrupt + call "clearBtState" and reset all states
-    	}
-    }
-
 }
 
 
@@ -153,6 +224,9 @@ void parseBtData(){
 		}
 		else{	// parse other blocks
 
+//			pos = _btRawData[i];	// bottle index
+//			_btParsedData[pos] = _btRawData[i+1] + _btRawData[i+2];
+
 			_btParsedData[p] = _btRawData[i];
 			result = _btRawData[i+1] + _btRawData[i+2];
 			_btParsedData[++p] = result;
@@ -182,14 +256,24 @@ void clearBtState(){
 
 //////////////////////////////////////////////////// ENGINE-START ///////////////////////////////////////////////////////////////////////////////////////////
 
-
 // TODO: Port-interrupt foreach bottle
 
-void enginePowerOn(bool state){
-
-}
-
-void engineDirection(_engineDirection engineDirection){
+// TODO: Add delay for transitors
+// mosfet delay = 1.16 us * 3 = 3.6 uS
+// bipolar fet delay = 28nS * 3 = 90 ns
+void engineControl(EngineDirection engineDirection){
+	if(engineDirection == EngineDirection::Stop){
+		P4OUT &= ~engineForward;
+		P4OUT &= ~engineBackward;
+	}
+	else if(engineDirection == EngineDirection::Backward){
+		P4OUT &= ~engineForward;
+		P4OUT |= engineBackward;
+	}
+	else if(engineDirection == EngineDirection::Forward){
+		P4OUT &= ~engineBackward;
+		P4OUT |= engineForward;
+	}
 
 }
 
@@ -201,6 +285,55 @@ void engineDriveToBottle(int position){
 
 }
 
+
+#pragma vector=PORT1_VECTOR
+__interrupt void Port_1(void)
+{
+	if(_bottlePosition == getPortBottlePosition()){
+		engineControl(EngineDirection::Stop);
+		_routine++;
+	}
+
+	P1IFG &= ~0x04;	// P1.2 IFG cleared
+
+}
+
+static int getPortBottlePosition(){
+
+	// 0000 0001 => grundposition => 0x01
+	// 0000 0010 => pos 1 => 0x02
+	// 0000 0100 => pos 2 => 0x04
+	// 0000 1000 => pos 3 => 0x08
+	// 0001 0000 => pos 4 => 0x10
+	// 0010 0000 => pos 5 => 0x20
+	// 0100 0000 => pos 6 => 0x40
+
+	// _bottlePosition => 0, 1, 2 ,3, 4, 5, 6
+
+	int port = P1IN;
+
+	if(port == 0x01)
+		return 0;
+	else if(port == 0x02)
+		return 1;
+	else if(port == 0x04)
+		return 2;
+	else if(port == 0x08)
+		return 3;
+	else if(port == 0x10)
+		return 4;
+	else if(port == 0x08)
+		return 3;
+	else if(port == 0x10)
+		return 4;
+	else if(port == 0x20)
+		return 5;
+	else if(port == 0x40)
+		return 6;
+
+	// TODO: else => error => fahre zu grund position
+
+}
 
 //////////////////////////////////////////////////// ENGINE-END ///////////////////////////////////////////////////////////////////////////////////////////
 
