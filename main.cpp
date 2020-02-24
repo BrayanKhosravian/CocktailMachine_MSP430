@@ -21,14 +21,9 @@
 #define engineForward BIT0 //engine goes away from position0 // PORT4
 #define engineBackward BIT1 //engine goes to position0		 // PORT 4
 
-enum class EngineDirection{Stop, Forward, Backward};
-
-// TODO: engine
-void enginePowerOn(bool state);
-void engineControl(EngineDirection engineDirection);
-void engineDriveToStart();						// <= use functions "enginePowerOn" "engineDirection" inside here
-void engineDriveToBottle(int position);			// <= use functions "enginePowerOn" "engineDirection" inside here
-
+// Engine
+enum class EngineStatus{Stop, Forward, Backward};
+void engineControl(EngineStatus engineDirection);
 int getPortBottlePosition();
 
 // setup
@@ -40,12 +35,6 @@ bool isRawBtDataValid();
 void parseBtData();
 void clearBtState();
 
-
-void Tets(){
-
-}
-
-
 // TODO: scale
 void scaleTurnOn(bool state);
 // void scaleMeasure(); // <= use maybe interrupt
@@ -55,7 +44,7 @@ static volatile int _btParsedData[12];
 static volatile bool _engineFinished;
 
 static volatile int _routine = 0;
-static volatile int _bottlePosition = 0;
+volatile int _bottlePosition = 0;
 
 // example
 // static int test[5] = {4,500,6,250,2,233};
@@ -67,10 +56,12 @@ int main(void) {
     	// data received
 		if(_btDataReceived){
 			for (_routine = 0; _routine <= sizeof(_btParsedData)/sizeof(int); ) {
+				// TODO: NOTAUS
+
 				// IMMER getränk position
 				if(_routine % 2 == 0){
 				   _bottlePosition = _btParsedData[_routine];
-				   engineControl(EngineDirection::Forward);
+				   engineControl(EngineStatus::Forward);
 				}
 				// IMMER milliliter
 				else if(_routine % 2 == 1){
@@ -78,6 +69,8 @@ int main(void) {
 				}
 
 			}
+
+			reset();
 
 
 
@@ -105,7 +98,8 @@ void setup(){
 		while(1);                               // do not load, trap CPU!!
 	}
     DCOCTL = 0;                               // Select lowest DCOx and MODx settings
-	BCSCTL1 = CALBC1_1MHZ;                    // Set DCO
+	// TODO: This configurations are used for the msp430g2553 and not for the msp430f2274 => add preprocessor condition + configure for f2274
+    BCSCTL1 = CALBC1_1MHZ;                    // Set DCO
     DCOCTL = CALDCO_1MHZ;
     P1SEL = BIT1 + BIT2 ;                     // P1.1 = RXD, P1.2=TXD
     P1SEL2 = BIT1 + BIT2 ;                    // P1.1 = RXD, P1.2=TXD
@@ -119,12 +113,15 @@ void setup(){
 
     //p2.6 input oscillator, p2.7 oscillator out
 
-    // TDOD: check if port interrupt for bottle positon is configuret correctly
+    // TODO: check if port interrupt for bottle positon is configuret correctly
     P1DIR &= 0x00; // set Port 1 in Input direction
-    P1IE |= 0x7E; // P1.1-P1.7 Interrupt enable
-    P1IFG |= 0x7E; // declares Port 1 Input (except P1.0) as Interrupt Flags
+    P1IE  |= BIT0 + BIT1 + BIT2 + BIT3 + BIT4 + BIT5 + BIT6 + BIT7; // P1.1-P1.7 Interrupt enable // => 0x7F
+    P1IFG |= 0x7F; // declares Port 1 Input (except P1.0) as Interrupt Flags
     P1IES |= 0x00; // P1.1-P1.6 low to high Edge
 
+    P4DIR |= 0x03; // P4.0 and P4.1 output => used for platform (engine)
+
+    // TODO: Hatzold waage
     P2DIR &= 0x03; //set P2.0-P2.1 in Input direction
     P2IE  |= 0x03; // P2.0-P2.1 Interrupt enable
     P2IFG |= 0x03; //declares P2.0-P2.1 as Interrupt Flags
@@ -136,6 +133,16 @@ void setup(){
 #endif
 
     __enable_interrupt();
+}
+
+void reset(){
+	clearBtState();
+
+	// TODO: linearantrieb runterfahren
+
+	_bottlePosition = 0;
+	engineControl(EngineDirection::Backward);
+
 }
 
 
@@ -261,44 +268,45 @@ void clearBtState(){
 // TODO: Add delay for transitors
 // mosfet delay = 1.16 us * 3 = 3.6 uS
 // bipolar fet delay = 28nS * 3 = 90 ns
-void engineControl(EngineDirection engineDirection){
-	if(engineDirection == EngineDirection::Stop){
+void engineControl(EngineStatus engineDirection){
+	if(engineDirection == EngineStatus::Stop){
 		P4OUT &= ~engineForward;
 		P4OUT &= ~engineBackward;
 	}
-	else if(engineDirection == EngineDirection::Backward){
+	else if(engineDirection == EngineStatus::Backward){
 		P4OUT &= ~engineForward;
 		P4OUT |= engineBackward;
 	}
-	else if(engineDirection == EngineDirection::Forward){
+	else if(engineDirection == EngineStatus::Forward){
 		P4OUT &= ~engineBackward;
 		P4OUT |= engineForward;
 	}
 
 }
 
-void engineDriveToStart(){
-
-}
-
-void engineDriveToBottle(int position){
-
-}
-
 
 #pragma vector=PORT1_VECTOR
-__interrupt void Port_1(void)
+__interrupt  void Port_1(void)
 {
-	if(_bottlePosition == getPortBottlePosition()){
-		engineControl(EngineDirection::Stop);
+	int result = getPortBottlePosition();
+
+	if(result == -1){
+		reset(); // Fahre zur grundposition
+	}
+	else if(result == _bottlePosition){
+		engineControl(EngineStatus::Stop);
 		_routine++;
 	}
+	else if(result > _bottlePosition) // engine driove too far
+		reset();
+	else if(result >= 6)
+		engineControl(EngineStatus::Stop);	// Stop because position 6 is the last available position.
 
 	P1IFG &= ~0x04;	// P1.2 IFG cleared
 
 }
 
-static int getPortBottlePosition(){
+int getPortBottlePosition(){
 
 	// 0000 0001 => grundposition => 0x01
 	// 0000 0010 => pos 1 => 0x02
@@ -330,8 +338,10 @@ static int getPortBottlePosition(){
 		return 5;
 	else if(port == 0x40)
 		return 6;
+	else if(port == 0x00)
+		return -2;	// nothing
 
-	// TODO: else => error => fahre zu grund position
+	else return -1;  // error => fahre zu grund position
 
 }
 
